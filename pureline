@@ -33,7 +33,7 @@ function section_content {
 #------------------------------------------------------------------------------
 # Helper function for User & ssh modules
 function ip_address {
-    echo "$(ip route get 1 | tr -s ' ' | cut -d' ' -f7)"
+    echo "$(ip route get 1 | tr -s ' ' | cut -d' ' -f7 | head -n 1)"
 }
 
 #------------------------------------------------------------------------------
@@ -51,7 +51,9 @@ function prompt_char {
 function time_module {
     local bg_color="$1"
     local fg_color="$2"
-    if [ "$PL_TIME_SHOW_SECONDS" = true ]; then
+    if [ "$PL_TIME_SHOW_FULL" = true ]; then
+        local content="\D{%F %T}"
+    elif [ "$PL_TIME_SHOW_SECONDS" = true ]; then
         local content="\t"
     else
         local content="\A"
@@ -98,10 +100,13 @@ function ssh_module {
         local fg_color="$2"
         local content="${PL_SYMBOLS[ssh]}"
         if [ "$PL_SSH_SHOW_HOST" = true ]; then
+            if [ ! -z "$content" ]; then
+                content+=" "
+            fi
             if [ "$PL_SSH_USE_IP" = true ]; then
-                content+=" $(ip_address)"
+                content+="$(ip_address)"
             else
-                content+=" \h"
+                content+="\h"
             fi
         fi
         PS1+="$(section_end $fg_color $bg_color)"
@@ -139,6 +144,12 @@ function background_jobs_module {
     local fg_color="$2"
     local number_jobs=$(jobs -p | wc -l)
     if [ ! "$number_jobs" -eq 0 ]; then
+        PS1+="$(section_end $fg_color $bg_color)"
+        PS1+="$(section_content $fg_color $bg_color " ${PL_SYMBOLS[background_jobs]} $number_jobs ")"
+        __last_color="$bg_color"
+    elif [ $# -ge 4 ]; then
+        bg_color="$3"
+        fg_color="$4"
         PS1+="$(section_end $fg_color $bg_color)"
         PS1+="$(section_content $fg_color $bg_color " ${PL_SYMBOLS[background_jobs]} $number_jobs ")"
         __last_color="$bg_color"
@@ -311,7 +322,15 @@ function return_code_module {
     if [ ! "$__return_code" -eq 0 ]; then
         local bg_color="$1"
         local fg_color="$2"
-        local content=" ${PL_SYMBOLS[return_code]} $__return_code "
+        local content=" ${PL_SYMBOLS[return_code]} $(printf "%3d" "$__return_code") "
+        PS1+="$(section_end $fg_color $bg_color)"
+        PS1+="$(section_content $fg_color $bg_color "$content")"
+        __last_color="$bg_color"
+    elif [ $# -ge 4 ]; then
+        local bg_color="$3"
+        local fg_color="$4"
+        local content=" ${PL_SYMBOLS[return_code]} $(printf "%3d" "$__return_code") "
+        #local content=" ${PL_SYMBOLS[return_code]} $__return_code "
         PS1+="$(section_end $fg_color $bg_color)"
         PS1+="$(section_content $fg_color $bg_color "$content")"
         __last_color="$bg_color"
@@ -452,4 +471,8 @@ if [ -z "$__PROMPT_COMMAND" ]; then
 fi
 
 # dynamically set the  PS1
-[[ ! ${PROMPT_COMMAND} =~ 'pureline_ps1;' ]] &&  PROMPT_COMMAND="pureline_ps1; $PROMPT_COMMAND" || true
+if [ -z "$PROMPT_COMMAND" ]; then
+    PROMPT_COMMAND="pureline_ps1"
+elif [[ ! ${PROMPT_COMMAND} =~ 'pureline_ps1;' ]]; then
+    PROMPT_COMMAND="pureline_ps1; $PROMPT_COMMAND"
+fi
