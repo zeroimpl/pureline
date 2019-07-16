@@ -75,7 +75,9 @@ function prompt_char {
 function time_segment {
     local bg_color="$1"
     local fg_color="$2"
-    if [ "$PL_TIME_SHOW_SECONDS" = true ]; then
+    if [ "$PL_TIME_SHOW_FULL" = true ]; then
+        local content="\D{%F %T}"
+    elif [ "$PL_TIME_SHOW_SECONDS" = true ]; then
         local content="\t"
     else
         local content="\A"
@@ -110,6 +112,34 @@ function user_segment {
 }
 
 # -----------------------------------------------------------------------------
+# append to prompt: indicate if SSH session
+# arg: $1 foreground color
+# arg: $2 background color
+# option variables;
+#   PL_SSH_SHOW_HOST: true/false to show host name/ip
+#   PL_SSH_USE_IP: true/false to show IP instead of hostname
+function ssh_module {
+    if [[ "${SSH_CLIENT}" || "${SSH_TTY}" ]]; then
+        local bg_color="$1"
+        local fg_color="$2"
+        local content="${PL_SYMBOLS[ssh]}"
+        if [ "$PL_SSH_SHOW_HOST" = true ]; then
+            if [ ! -z "$content" ]; then
+                content+=" "
+            fi
+            if [ "$PL_SSH_USE_IP" = true ]; then
+                content+="$(ip_address)"
+            else
+                content+="\h"
+            fi
+        fi
+        PS1+="$(section_end $fg_color $bg_color)"
+        PS1+="$(section_content $fg_color $bg_color " $content ")"
+        __last_color="$bg_color"
+    fi
+}
+
+# -----------------------------------------------------------------------------
 # append to prompt: current directory
 # arg: $1 foreground color
 # arg; $2 background color
@@ -141,6 +171,12 @@ function background_jobs_segment {
     if [ ! "$number_jobs" -eq 0 ]; then
         PS1+="$(segment_end "$fg_color" "$bg_color")"
         PS1+="$(segment_content "$fg_color" "$bg_color" " ${PL_SYMBOLS[background_jobs]} $number_jobs ")"
+        __last_color="$bg_color"
+    elif [ $# -ge 4 ]; then
+        bg_color="$3"
+        fg_color="$4"
+        PS1+="$(section_end $fg_color $bg_color)"
+        PS1+="$(section_content $fg_color $bg_color " ${PL_SYMBOLS[background_jobs]} $number_jobs ")"
         __last_color="$bg_color"
     fi
 }
@@ -189,7 +225,14 @@ function return_code_segment {
     if [ ! "$__return_code" -eq 0 ]; then
         local bg_color="$1"
         local fg_color="$2"
-        local content=" ${PL_SYMBOLS[return_code]} $__return_code "
+        local content=" ${PL_SYMBOLS[return_code]} $(printf "%3d" "$__return_code") "
+        PS1+="$(segment_end "$fg_color" "$bg_color")"
+        PS1+="$(segment_content "$fg_color" "$bg_color" "$content")"
+        __last_color="$bg_color"
+    elif [ $# -ge 4 ]; then
+        local bg_color="$3"
+        local fg_color="$4"
+        local content=" ${PL_SYMBOLS[return_code]} $(printf "%3d" "$__return_code") "
         PS1+="$(segment_end "$fg_color" "$bg_color")"
         PS1+="$(segment_content "$fg_color" "$bg_color" "$content")"
         __last_color="$bg_color"
