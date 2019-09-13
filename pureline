@@ -473,6 +473,6 @@ fi
 # dynamically set the  PS1
 if [ -z "$PROMPT_COMMAND" ]; then
     PROMPT_COMMAND="pureline_ps1"
-elif [[ ! ${PROMPT_COMMAND} =~ 'pureline_ps1;' ]]; then
+elif [[ ! ";${PROMPT_COMMAND};" =~ \;\ *pureline_ps1\ *\; ]]; then
     PROMPT_COMMAND="pureline_ps1; $PROMPT_COMMAND"
 fi
